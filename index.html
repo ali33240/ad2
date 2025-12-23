@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>哆啦A夢數學大冒險</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap');
+        
+        :root {
+            --dora-blue: #00AEEF;
+            --dora-red: #EE4035;
+            --dora-yellow: #FAEC32;
+            --dora-white: #FFFFFF;
+            --dora-bg: #E0F7FF;
+        }
+
+        body {
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            background-color: var(--dora-bg);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.4) 0%, transparent 20%),
+                radial-gradient(circle at 80% 80%, rgba(0, 174, 239, 0.1) 0%, transparent 20%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 主遊戲容器佈局 */
+        .game-container {
+            display: flex;
+            align-items: center; 
+            justify-content: center;
+            gap: 1.5rem;
+            width: 100%;
+            flex-grow: 1;
+            padding: 1rem 2rem;
+        }
+
+        /* 題目卡片設計 */
+        #problem-card {
+            background: white;
+            border: 12px solid var(--dora-blue);
+            box-shadow: 0 15px 0 rgba(0, 174, 239, 0.2);
+            width: 550px; /* 稍微加大寬度以容納大框框 */
+            height: 650px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            border-radius: 60px;
+            position: relative;
+            padding: 2.5rem 1rem; 
+        }
+
+        /* 直式數學內容容器 */
+        .math-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 8rem; 
+            line-height: 1.05;
+            font-weight: 700;
+            color: #333;
+            width: fit-content;
+            margin-top: 10px; 
+        }
+
+        /* 統一 4 欄網格定義 */
+        .digit-row, .carry-container, .answer-container {
+            display: grid;
+            grid-template-columns: 0.8em 1.1em 1.1em 1.1em; 
+            justify-items: center;
+            align-items: center;
+            justify-content: center; 
+            font-family: 'Roboto Mono', monospace;
+            width: 100%;
+        }
+
+        /* 加法符號 */
+        .operator-sign {
+            color: var(--dora-red);
+            font-size: 5.5rem; 
+            grid-column: 1;
+            justify-self: center;
+            margin-top: 0.1em;
+        }
+
+        .answer-line {
+            width: 95%; 
+            height: 12px;
+            background-color: var(--dora-blue);
+            margin: 12px 0;
+            border-radius: 6px;
+        }
+
+        /* 進位框樣式 */
+        .carry-box {
+            width: 3.2rem;
+            height: 3.2rem;
+            border: 4px dashed var(--dora-red);
+            background-color: #FFF;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: var(--dora-red);
+            font-family: 'Roboto Mono', monospace;
+            cursor: pointer;
+            visibility: hidden; 
+        }
+        .carry-box.visible { visibility: visible; }
+        .carry-box.active { border-style: solid; background-color: #FFE4E4; border-color: var(--dora-yellow); box-shadow: 0 0 15px var(--dora-yellow); }
+
+        /* 答案框格：加大尺寸 */
+        .answer-digit-box {
+            width: 5.5rem; /* 從 4.5rem 加大 */
+            height: 7.2rem; /* 從 5.8rem 加大 */
+            border: 8px solid var(--dora-blue); /* 增厚邊框 */
+            background-color: white;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5.2rem; /* 數字字體加大 */
+            color: #333;
+            font-family: 'Roboto Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .answer-digit-box.active {
+            border-color: var(--dora-yellow);
+            background-color: #F0FBFF;
+            box-shadow: 0 0 25px var(--dora-yellow);
+            transform: scale(1.05);
+        }
+
+        /* 氣泡按鈕樣式 */
+        .bubble-btn {
+            transition: all 0.1s ease;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .bubble-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+        }
+
+        /* 鍵盤區域 */
+        .keyboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 750px;
+            padding: 10px; 
+            height: auto;
+        }
+
+        .num-key {
+            background-color: white;
+            color: var(--dora-blue);
+            border: 6px solid var(--dora-blue);
+            font-size: 6rem;
+            height: 140px; 
+        }
+
+        .send-key {
+            background-color: var(--dora-yellow);
+            color: #A85F00;
+            border: 6px solid #EBCB00;
+            font-size: 3.5rem;
+        }
+
+        .clear-key {
+            background-color: #FFEBEE;
+            color: var(--dora-red);
+            border: 6px solid var(--dora-red);
+            font-size: 2.5rem;
+        }
+
+        /* 底部清除按鈕 */
+        .bottom-clear-btn {
+            position: absolute;
+            bottom: 25px; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            padding: 0.8rem 0;
+            z-index: 10;
+        }
+
+        .bell-icon {
+            color: var(--dora-yellow);
+            text-shadow: 2px 2px 0 #A85F00;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center">
+
+    <!-- 選單畫面 -->
+    <div id="menu-screen" class="w-full max-w-lg p-10 text-center flex flex-col justify-center h-screen space-y-6 z-10">
+        <div class="relative">
+            <i class="fas fa-bell text-8xl bell-icon animate-bounce mb-2"></i>
+            <h1 class="text-6xl font-bold text-[--dora-blue] drop-shadow-[0_4px_0_#fff]">
+                哆啦A夢<br>數學冒險
+            </h1>
+        </div>
+        
+        <div class="grid grid-cols-1 gap-4">
+            <button onclick="startGame('1d-no-carry')" class="w-full bg-[--dora-blue] text-white bubble-btn text-2xl py-5 rounded-full border-b-6 border-[#008CBF]">
+                一位數加法 (不進位)
+            </button>
+            <button onclick="startGame('1d-carry')" class="w-full bg-[--dora-blue] text-white bubble-btn text-2xl py-5 rounded-full border-b-6 border-[#008CBF]">
+                一位數加法 (進位)
+            </button>
+            <button onclick="startGame('1d2d-no-carry')" class="w-full bg-[--dora-blue] text-white bubble-btn text-2xl py-5 rounded-full border-b-6 border-[#008CBF]">
+                一位數 + 兩位數 (不進位)
+            </button>
+            <button onclick="startGame('2d2d-no-carry')" class="w-full bg-[--dora-blue] text-white bubble-btn text-2xl py-5 rounded-full border-b-6 border-[#008CBF]">
+                兩位數 + 兩位數 (不進位)
+            </button>
+            <button onclick="startGame('2d2d-carry')" class="w-full bg-[--dora-blue] text-white bubble-btn text-2xl py-5 rounded-full border-b-6 border-[#008CBF]">
+                兩位數 + 兩位數 (進位)
+            </button>
+        </div>
+    </div>
+
+    <!-- 遊戲畫面 -->
+    <div id="game-screen" class="hidden w-full h-screen p-1 flex flex-col justify-start">
+        
+        <!-- 頂部資訊列 -->
+        <div class="flex justify-between items-center max-w-[98%] mx-auto w-full py-2">
+            <button onclick="backToMenu()" class="bg-white text-[--dora-blue] text-xl w-14 h-14 rounded-full border-4 border-[--dora-blue] bubble-btn">
+                <i class="fas fa-home"></i>
+            </button>
+            
+            <div class="flex items-center bg-[--dora-yellow] px-8 py-2 rounded-full border-4 border-[#EBCB00] shadow-lg">
+                <i class="fas fa-star text-[#A85F00] mr-2 text-2xl"></i>
+                <span class="text-3xl font-bold text-[#A85F00]">得分: <span id="score">0</span></span>
+            </div>
+        </div>
+
+        <!-- 主內容區 -->
+        <div class="game-container overflow-hidden">
+            
+            <!-- 左側鍵盤 -->
+            <div class="keyboard-grid">
+                <button onclick="inputNum(7)" class="num-key bubble-btn">7</button>
+                <button onclick="inputNum(8)" class="num-key bubble-btn">8</button>
+                <button onclick="inputNum(9)" class="num-key bubble-btn">9</button>
+                
+                <button onclick="inputNum(4)" class="num-key bubble-btn">4</button>
+                <button onclick="inputNum(5)" class="num-key bubble-btn">5</button>
+                <button onclick="inputNum(6)" class="num-key bubble-btn">6</button>
+                
+                <button onclick="inputNum(1)" class="num-key bubble-btn">1</button>
+                <button onclick="inputNum(2)" class="num-key bubble-btn">2</button>
+                <button onclick="inputNum(3)" class="num-key bubble-btn">3</button>
+                
+                <button onclick="clearCurrentInput()" class="clear-key bubble-btn">清除</button>
+                <button onclick="inputNum(0)" class="num-key bubble-btn">0</button>
+                <button onclick="checkAnswer()" class="send-key bubble-btn">送出</button>
+            </div>
+
+            <!-- 右側題目卡片 -->
+            <div id="problem-card">
+                
+                <div class="math-column">
+                    <!-- 進位列 -->
+                    <div id="carry-row" class="carry-container">
+                        <span></span> <!-- 符號欄位上方 -->
+                        <div id="carry-0" class="carry-box" onclick="focusInput('carry', 0)"><span></span></div>
+                        <div id="carry-1" class="carry-box" onclick="focusInput('carry', 1)"><span></span></div>
+                        <span></span> <!-- 個位上方 -->
+                    </div>
+
+                    <!-- 第一個數 -->
+                    <div id="num1-row" class="digit-row text-blue-500">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+
+                    <!-- 第二個數 & 運算符號 -->
+                    <div id="num2-row" class="digit-row text-blue-500">
+                        <span class="operator-sign">+</span>
+                        <span></span><span></span><span></span>
+                    </div>
+
+                    <div class="answer-line"></div>
+
+                    <!-- 答案框 -->
+                    <div id="answer-row" class="answer-container">
+                        <span></span> <!-- 符號欄位下方 -->
+                        <div id="ans-0" class="answer-digit-box" onclick="focusInput('ans', 0)"><span></span></div>
+                        <div id="ans-1" class="answer-digit-box" onclick="focusInput('ans', 1)"><span></span></div>
+                        <div id="ans-2" class="answer-digit-box" onclick="focusInput('ans', 2)"><span></span></div>
+                    </div>
+                </div>
+
+                <!-- 框框下方的清除鍵 -->
+                <button onclick="clearCurrentInput()" class="bottom-clear-btn clear-key bubble-btn text-2xl">
+                    <i class="fas fa-eraser mr-2"></i> 清除
+                </button>
+
+                <!-- 反饋遮罩 -->
+                <div id="feedback-overlay" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95 rounded-[48px] hidden z-50">
+                    <div class="text-center">
+                        <img id="feedback-img" src="" class="w-48 h-48 mx-auto mb-2">
+                        <h2 id="feedback-text" class="text-4xl font-bold"></h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音效資源 -->
+    <audio id="snd-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+    <audio id="snd-wrong" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
+
+    <script>
+        let score = 0;
+        let currentMode = '';
+        let currentProblem = { a: 0, b: 0, ans: 0, carries: [0, 0] };
+        let userInputs = { ans: ["", "", ""], carry: ["", ""] };
+        let activeFocus = { type: 'ans', index: 2 };
+
+        const imgCorrect = "https://cdn-icons-png.flaticon.com/512/7518/7518748.png";
+        // 將錯誤圖片改為更具鼓勵性質（再加油）的哆啦A夢圖片
+        const imgWrong = "https://cdn-icons-png.flaticon.com/512/10574/10574761.png"; 
+
+        function startGame(mode) {
+            currentMode = mode;
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            score = 0;
+            updateScore();
+            generateProblem();
+        }
+
+        function backToMenu() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('menu-screen').classList.remove('hidden');
+        }
+
+        function updateScore() {
+            document.getElementById('score').innerText = score;
+        }
+
+        function generateProblem() {
+            let a, b;
+            switch(currentMode) {
+                case '1d-no-carry':
+                    do { a = Math.floor(Math.random()*9)+1; b = Math.floor(Math.random()*9)+1; } while (a + b >= 10);
+                    break;
+                case '1d-carry':
+                    do { a = Math.floor(Math.random()*9)+1; b = Math.floor(Math.random()*9)+1; } while (a + b < 10);
+                    break;
+                case '1d2d-no-carry':
+                    do {
+                        a = Math.floor(Math.random()*9)+1;
+                        b = Math.floor(Math.random()*90)+10;
+                    } while ((a % 10 + b % 10 >= 10));
+                    break;
+                case '2d2d-no-carry':
+                    do {
+                        a = Math.floor(Math.random()*90)+10;
+                        b = Math.floor(Math.random()*90)+10;
+                    } while ((a % 10 + b % 10 >= 10) || (Math.floor(a/10) + Math.floor(b/10) >= 10));
+                    break;
+                case '2d2d-carry':
+                    do {
+                        a = Math.floor(Math.random()*90)+10;
+                        b = Math.floor(Math.random()*90)+10;
+                    } while ((a % 10 + b % 10 < 10) && (Math.floor(a/10) + Math.floor(b/10) < 10));
+                    break;
+            }
+
+            currentProblem.a = a;
+            currentProblem.b = b;
+            currentProblem.ans = a + b;
+            
+            let c1 = (a % 10 + b % 10) >= 10 ? 1 : 0;
+            let c2 = (Math.floor(a/10%10) + Math.floor(b/10%10) + c1) >= 10 ? 1 : 0;
+            currentProblem.carries = [c2, c1];
+
+            userInputs = { ans: ["", "", ""], carry: ["", ""] };
+            
+            renderProblem();
+            focusInput('ans', 2);
+        }
+
+        function renderProblem() {
+            const row1 = document.getElementById('num1-row').children;
+            const row2 = document.getElementById('num2-row').children;
+            
+            for(let i=0; i<4; i++) { 
+                row1[i].innerText = ''; 
+                if(i > 0) row2[i].innerText = ''; 
+            }
+
+            const aStr = String(currentProblem.a).padStart(3, ' ');
+            const bStr = String(currentProblem.b).padStart(3, ' ');
+            
+            for(let i=0; i<3; i++) {
+                row1[i+1].innerText = aStr[i] === ' ' ? '' : aStr[i];
+                row2[i+1].innerText = bStr[i] === ' ' ? '' : bStr[i];
+            }
+
+            const cBox0 = document.getElementById('carry-0');
+            const cBox1 = document.getElementById('carry-1');
+            
+            cBox0.classList.toggle('visible', currentProblem.carries[0] > 0);
+            cBox1.classList.toggle('visible', currentProblem.carries[1] > 0);
+
+            const ansStr = String(currentProblem.ans);
+            const ansOffset = 3 - ansStr.length;
+            for(let i=0; i<3; i++) {
+                const box = document.getElementById(`ans-${i}`);
+                if (i >= ansOffset) {
+                    box.style.visibility = 'visible';
+                } else {
+                    box.style.visibility = 'hidden';
+                }
+            }
+
+            updateUI();
+        }
+
+        function focusInput(type, index) {
+            activeFocus = { type, index };
+            updateActiveStyles();
+        }
+
+        function updateActiveStyles() {
+            document.querySelectorAll('.answer-digit-box, .carry-box').forEach(el => el.classList.remove('active'));
+            if (activeFocus.type === 'ans') {
+                document.getElementById(`ans-${activeFocus.index}`).classList.add('active');
+            } else {
+                document.getElementById(`carry-${activeFocus.index}`).classList.add('active');
+            }
+        }
+
+        function inputNum(num) {
+            if (activeFocus.type === 'ans') {
+                userInputs.ans[activeFocus.index] = String(num);
+                if (activeFocus.index > 3 - String(currentProblem.ans).length) {
+                    activeFocus.index--;
+                }
+            } else {
+                userInputs.carry[activeFocus.index] = String(num);
+            }
+            updateUI();
+        }
+
+        function clearCurrentInput() {
+            if (activeFocus.type === 'ans') {
+                userInputs.ans[activeFocus.index] = "";
+                if (activeFocus.index < 2) activeFocus.index++;
+            } else {
+                userInputs.carry[activeFocus.index] = "";
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            for(let i=0; i<3; i++) {
+                const span = document.querySelector(`#ans-${i} span`);
+                if(span) span.innerText = userInputs.ans[i];
+            }
+            for(let i=0; i<2; i++) {
+                const span = document.querySelector(`#carry-${i} span`);
+                if(span) span.innerText = userInputs.carry[i];
+            }
+            updateActiveStyles();
+        }
+
+        function checkAnswer() {
+            const userAnsStr = userInputs.ans.join("");
+            const isAnsCorrect = parseInt(userAnsStr) === currentProblem.ans;
+
+            let isCarryCorrect = true;
+            if (currentProblem.carries[0] > 0 && userInputs.carry[0] !== "1") isCarryCorrect = false;
+            if (currentProblem.carries[1] > 0 && userInputs.carry[1] !== "1") isCarryCorrect = false;
+
+            showFeedback(isAnsCorrect && isCarryCorrect);
+        }
+
+        function showFeedback(isCorrect) {
+            const overlay = document.getElementById('feedback-overlay');
+            const img = document.getElementById('feedback-img');
+            const text = document.getElementById('feedback-text');
+            const sndC = document.getElementById('snd-correct');
+            const sndW = document.getElementById('snd-wrong');
+
+            overlay.classList.remove('hidden');
+            
+            if (isCorrect) {
+                img.src = imgCorrect;
+                text.innerText = "好棒！答對了！";
+                text.className = "text-4xl font-bold text-green-500 animate-bounce";
+                score += 10;
+                updateScore();
+                sndC.currentTime = 0; sndC.play();
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    generateProblem();
+                }, 1500);
+            } else {
+                img.src = imgWrong;
+                text.innerText = "再加油喔！加油！"; // 改為更具鼓勵的文字
+                text.className = "text-4xl font-bold text-red-500";
+                sndW.currentTime = 0; sndW.play();
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 1500);
+            }
+        }
+    </script>
+</body>
+</html>
